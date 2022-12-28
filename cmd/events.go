@@ -17,9 +17,8 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/urfave/cli"
+	"github.com/sbuckfelder/github-monitoring-tool/proxy"
 )
 
 var eventsCommand = cli.Command{
@@ -31,8 +30,11 @@ var eventsCommand = cli.Command{
 			Usage: "github repo to list events for",
 		},
 	},
-	Action: func(context *cli.Context) error {
-		fmt.Printf("Got repo flag:%s\n", context.String("repo"))
+	Action: func(ctx *cli.Context) error {
+		_, err := proxy.NewProxy()
+		if err != nil {
+			panic("Failed to create GitHub client")
+		}
 		return nil
 	},
 }
