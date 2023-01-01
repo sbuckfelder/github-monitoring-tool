@@ -49,6 +49,7 @@ Simple CLI tool to help monitor and manage projects hosted on GitHub.`
 	}
 	app.Commands = []cli.Command{
 		eventsCommand,
+		prCommand,
 	}
 	app.Action = func(context *cli.Context) error {
 		testingString := context.GlobalString("testing")
