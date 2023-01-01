@@ -18,8 +18,8 @@ package proxy
 
 import (
 	"context"
-	"io/ioutil"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strings"
 
@@ -37,11 +37,11 @@ type GithubProxy struct {
 
 func NewProxy() (GithubProxy, error) {
 	ctx := context.Background()
-	token, err := getToken()	
+	token, err := getToken()
 	if err != nil {
 		panicMsg := fmt.Sprintf("Failed to get token from %s: %v", getTokenFileName(), err)
 		panic(panicMsg)
-	}	
+	}
 	tokenSource := oauth2.StaticTokenSource(
 		&oauth2.Token{
 			AccessToken: token},
@@ -53,7 +53,7 @@ func NewProxy() (GithubProxy, error) {
 }
 
 func getTokenFileName() string {
-	homeDir, _  := os.UserHomeDir()
+	homeDir, _ := os.UserHomeDir()
 	return homeDir + "/" + tokenFile
 }
 
