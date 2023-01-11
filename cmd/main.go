@@ -40,21 +40,9 @@ func App() *cli.App {
 	app.Usage = usage
 	app.Description = `
 Simple CLI tool to help monitor and manage projects hosted on GitHub.`
-	app.Flags = []cli.Flag{
-		cli.StringFlag{
-			Name:  "testing,t",
-			Usage: "checking passing in values",
-			Value: "HACKY TEST STRING",
-		},
-	}
 	app.Commands = []cli.Command{
 		eventsCommand,
 		prCommand,
-	}
-	app.Action = func(context *cli.Context) error {
-		testingString := context.GlobalString("testing")
-		fmt.Printf("Testing String: %s\n", testingString)
-		return nil
 	}
 	return app
 }
