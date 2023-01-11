@@ -36,11 +36,15 @@ func (p *GithubProxy) GetEventsForHours(org string, repos []string, hours int) {
 	for _, repo := range repos {
 		events, _ := p.getEventsSince(ctx, org, repo, adjTime)
 		fmt.Printf("https://github.com/%s/%s Events Since %s\n", org, repo, adjTime.Format(time.RFC3339))
-		GenerateEventReport(events)
+		GenerateEventReport(events, repo)
 	}
+	fmt.Printf("_Based on Events from %s to %s_\n",
+		currentTime.Format(time.RFC3339),
+		adjTime.Format(time.RFC3339))
 }
 
 func (p *GithubProxy) GetEventsSinceRFC3339(org string, repos []string, sinceString string) {
+	currentTime := time.Now()
 	since, err := time.Parse(time.RFC3339, sinceString)
 	if err != nil {
 		panicMsg := fmt.Sprintf("Since value:'%s' not in RFC3339 e.g. 2006-01-02T15:04:05Z", sinceString)
@@ -50,8 +54,11 @@ func (p *GithubProxy) GetEventsSinceRFC3339(org string, repos []string, sinceStr
 	for _, repo := range repos {
 		events, _ := p.getEventsSince(ctx, org, repo, since)
 		fmt.Printf("https://github.com/%s/%s Events Since %s\n", org, repo, sinceString)
-		GenerateEventReport(events)
+		GenerateEventReport(events, repo)
 	}
+	fmt.Printf("_Based on Events from %s to %s_\n",
+		currentTime.Format(time.RFC3339),
+		since.Format(time.RFC3339))
 }
 
 func (p *GithubProxy) GetEventsForDate(org string, repos []string, dateString string) {
@@ -66,8 +73,9 @@ func (p *GithubProxy) GetEventsForDate(org string, repos []string, dateString st
 		events, _ := p.getEventsSince(ctx, org, repo, targetDate)
 		events = filterEvents(events, eventFilterDate(targetDate))
 		fmt.Printf("https://github.com/%s/%s Events for %s\n", org, repo, dateString)
-		GenerateEventReport(events)
+		GenerateEventReport(events, repo)
 	}
+	fmt.Printf("_Based on Events for %s\n", dateString)
 }
 
 func (p *GithubProxy) getEventsSince(
@@ -133,7 +141,7 @@ func eventFilterType() func(*github.Event) bool {
 	}
 }
 
-func printPullRequestReport(events []*github.Event) {
+func printPullRequestReport(events []*github.Event, repo string) {
 	var newPRs = []*github.Event{}
 	var mergedPRs = []*github.Event{}
 	for _, event := range events {
@@ -152,7 +160,7 @@ func printPullRequestReport(events []*github.Event) {
 		fmt.Printf("===========\n")
 		var mergedPRText = sort.StringSlice{}
 		for _, prEvent := range mergedPRs {
-			mergedPRText = append(mergedPRText, printPullRequestEvent(prEvent))
+			mergedPRText = append(mergedPRText, printPullRequestEvent(prEvent, repo))
 		}
 		mergedPRText.Sort()
 		for _, txt := range mergedPRText {
@@ -165,7 +173,7 @@ func printPullRequestReport(events []*github.Event) {
 		fmt.Printf("=================\n")
 		var newPRText = sort.StringSlice{}
 		for _, prEvent := range newPRs {
-			newPRText = append(newPRText, printPullRequestEvent(prEvent))
+			newPRText = append(newPRText, printPullRequestEvent(prEvent, repo))
 		}
 		newPRText.Sort()
 		for _, txt := range newPRText {
@@ -174,10 +182,12 @@ func printPullRequestReport(events []*github.Event) {
 	}
 }
 
-func printPullRequestEvent(event *github.Event) string {
+func printPullRequestEvent(event *github.Event, repo string) string {
 	payload, _ := event.ParsePayload()
 	prEvent := payload.(*github.PullRequestEvent)
-	return fmt.Sprintf("PR#%d %s: %s %s\n",
+
+	return fmt.Sprintf("- **%s** PR#%d %s: [%s](%s)\n",
+		repo,
 		*prEvent.Number,
 		*prEvent.PullRequest.User.Login,
 		*prEvent.PullRequest.Title,
@@ -198,7 +208,7 @@ func getPullRequestURLFromReview(event *github.Event) (string, string) {
 	return "", ""
 }
 
-func printPullRequestReviewReport(events []*github.Event) {
+func printPullRequestReviewReport(events []*github.Event, repo string) {
 	reviewMap := make(map[string]int)
 	titleMap := make(map[string]string)
 	for _, event := range events {
@@ -211,7 +221,7 @@ func printPullRequestReviewReport(events []*github.Event) {
 	fmt.Printf("==========================\n")
 	var revText = sort.StringSlice{}
 	for url, val := range reviewMap {
-		revText = append(revText, fmt.Sprintf("Actions:%d %s %s\n", val, titleMap[url], url))
+		revText = append(revText, fmt.Sprintf("Actions:%d - **%s** [%s](%s)\n", val, repo, titleMap[url], url))
 	}
 	revText.Sort()
 	for _, txt := range revText {
@@ -219,7 +229,7 @@ func printPullRequestReviewReport(events []*github.Event) {
 	}
 }
 
-func printIssueEventReport(events []*github.Event) {
+func printIssueEventReport(events []*github.Event, repo string) {
 	var newIssues = []*github.Event{}
 	var closedIssues = []*github.Event{}
 	for _, event := range events {
@@ -238,7 +248,7 @@ func printIssueEventReport(events []*github.Event) {
 		fmt.Printf("==========\n")
 		var newIssueText = sort.StringSlice{}
 		for _, issueEvent := range newIssues {
-			newIssueText = append(newIssueText, printIssueEvent(issueEvent))
+			newIssueText = append(newIssueText, printIssueEvent(issueEvent, repo))
 		}
 		newIssueText.Sort()
 		for _, txt := range newIssueText {
@@ -251,7 +261,7 @@ func printIssueEventReport(events []*github.Event) {
 		fmt.Printf("=============\n")
 		var closedIssueText = sort.StringSlice{}
 		for _, issueEvent := range closedIssues {
-			closedIssueText = append(closedIssueText, printIssueEvent(issueEvent))
+			closedIssueText = append(closedIssueText, printIssueEvent(issueEvent, repo))
 		}
 		closedIssueText.Sort()
 		for _, txt := range closedIssueText {
@@ -260,17 +270,18 @@ func printIssueEventReport(events []*github.Event) {
 	}
 }
 
-func printIssueEvent(event *github.Event) string {
+func printIssueEvent(event *github.Event, repo string) string {
 	payload, _ := event.ParsePayload()
 	issuesEvent := payload.(*github.IssuesEvent)
-	return fmt.Sprintf("ISSUE#%d %s: %s %s\n",
+	return fmt.Sprintf("- **%s** ISSUE#%d %s: [%s](%s)\n",
+		repo,
 		*issuesEvent.Issue.Number,
 		*issuesEvent.Issue.User.Login,
 		*issuesEvent.Issue.Title,
 		*issuesEvent.Issue.HTMLURL)
 }
 
-func printIssueCommentEventReport(events []*github.Event) {
+func printIssueCommentEventReport(events []*github.Event, repo string) {
 	commentMap := make(map[string]int)
 	titleMap := make(map[string]string)
 	for _, event := range events {
@@ -285,7 +296,7 @@ func printIssueCommentEventReport(events []*github.Event) {
 	fmt.Printf("======================\n")
 	var commentText = sort.StringSlice{}
 	for url, val := range commentMap {
-		commentText = append(commentText, fmt.Sprintf("Comments:%d %s %s\n", val, titleMap[url], url))
+		commentText = append(commentText, fmt.Sprintf("Comments:%d - **%s** [%s](%s)\n", val, repo, titleMap[url], url))
 	}
 	commentText.Sort()
 	for _, txt := range commentText {
@@ -293,7 +304,7 @@ func printIssueCommentEventReport(events []*github.Event) {
 	}
 }
 
-func GenerateEventReport(events []*github.Event) {
+func GenerateEventReport(events []*github.Event, repo string) {
 	defer fmt.Printf("%s\n", REPORT_SEPERATOR)
 	eventMap := make(map[string][]*github.Event)
 	for _, event := range events {
@@ -310,21 +321,21 @@ func GenerateEventReport(events []*github.Event) {
 	}
 	prEvents, _ := eventMap["PullRequestEvent"]
 	if len(prEvents) != 0 {
-		printPullRequestReport(prEvents)
+		printPullRequestReport(prEvents, repo)
 	}
 	revEvents, _ := eventMap["PullRequestReviewEvent"]
 	revCommentEvents, _ := eventMap["PullRequestReviewCommentEvent"]
 	revEvents = append(revEvents, revCommentEvents...)
 	if len(revEvents) != 0 {
-		printPullRequestReviewReport(revEvents)
+		printPullRequestReviewReport(revEvents, repo)
 	}
 	issueEvents, _ := eventMap["IssuesEvent"]
 	if len(issueEvents) != 0 {
-		printIssueEventReport(issueEvents)
+		printIssueEventReport(issueEvents, repo)
 	}
 	issueCommentEvents, _ := eventMap["IssueCommentEvent"]
 	if len(issueCommentEvents) != 0 {
-		printIssueCommentEventReport(issueCommentEvents)
+		printIssueCommentEventReport(issueCommentEvents, repo)
 	}
 	fmt.Printf("============\n")
 	fmt.Printf("EVENT REPORT\n")
