@@ -25,7 +25,7 @@ import (
 
 var PRS_PER_PAGE int = 100
 
-func (p *GithubProxy) GetPullRequests(org ,repo string) {
+func (p *GithubProxy) GetPullRequests(org, repo string) {
 	ctx := context.Background()
 	pullRequests, err := p.getAllOpenPullRequests(ctx, org, repo)
 	if err != nil {
@@ -33,23 +33,26 @@ func (p *GithubProxy) GetPullRequests(org ,repo string) {
 		return
 	}
 	var output = []string{}
-	for _, PR := range(pullRequests) {
+	titleLine := "Title,URL,Created,Updated,PR Author,LastCommentDate,CommentAuthor"
+	output = append(output, titleLine)
+	for _, PR := range pullRequests {
 		comment := p.getLastComment(ctx, org, repo, *PR.Number)
 		commentCsv := ""
 		if comment != nil {
-			commentCsv = fmt.Sprintf("%v,%s",  
+			commentCsv = fmt.Sprintf("%v,%s",
 				comment.CreatedAt,
 				*comment.User.Login)
 		}
-		csvLine := fmt.Sprintf("%s,%v,%v,%s,%s\n",
+		csvLine := fmt.Sprintf("%s,%s,%v,%v,%s,%s",
+			*PR.Title,
 			*PR.HTMLURL,
 			PR.CreatedAt,
 			PR.UpdatedAt,
 			*PR.User.Login,
 			commentCsv)
-		output = append(output, csvLine) 
+		output = append(output, csvLine)
 	}
-	for _, line := range(output) {
+	for _, line := range output {
 		fmt.Println(line)
 	}
 }
@@ -59,12 +62,12 @@ func (p *GithubProxy) getAllOpenPullRequests(ctx context.Context, org, repo stri
 	morePRs := true
 	pageNum := 1
 	for morePRs {
-		prOpts :=  &github.PullRequestListOptions{
-			State: "Open",
-			Sort: "Created",
+		prOpts := &github.PullRequestListOptions{
+			State:     "Open",
+			Sort:      "Created",
 			Direction: "asc",
 			ListOptions: github.ListOptions{
-				Page: pageNum,
+				Page:    pageNum,
 				PerPage: PRS_PER_PAGE,
 			},
 		}
@@ -81,14 +84,14 @@ func (p *GithubProxy) getAllOpenPullRequests(ctx context.Context, org, repo stri
 		}
 	}
 	return openPRs, nil
-}	
+}
 
 func (p *GithubProxy) getLastComment(ctx context.Context, org, repo string, prNum int) *github.PullRequestComment {
 	commentOpts := &github.PullRequestListCommentsOptions{
-		Sort: "Created",
+		Sort:      "Created",
 		Direction: "desc",
 		ListOptions: github.ListOptions{
-			Page: 1,
+			Page:    1,
 			PerPage: 1,
 		},
 	}
