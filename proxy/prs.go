@@ -19,11 +19,16 @@ package proxy
 import (
 	"context"
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/google/go-github/v48/github"
 )
 
-var PRS_PER_PAGE int = 100
+var (
+	PRS_PER_PAGE int = 100
+	DATE_FORMAT string = "2006-Jan-02"
+)
 
 func (p *GithubProxy) GetPullRequests(org, repo string) {
 	ctx := context.Background()
@@ -33,22 +38,27 @@ func (p *GithubProxy) GetPullRequests(org, repo string) {
 		return
 	}
 	var output = []string{}
-	titleLine := "Title,URL,Created,Updated,PR Author,LastCommentDate,CommentAuthor"
+	titleLine := "Title,URL,DaysSinceLastAction,Created,Updated,PR Author,LastCommentDate,CommentAuthor"
 	output = append(output, titleLine)
 	for _, PR := range pullRequests {
 		comment := p.getLastComment(ctx, org, repo, *PR.Number)
 		commentCsv := ""
 		if comment != nil {
 			commentCsv = fmt.Sprintf("%v,%s",
-				comment.CreatedAt,
+				comment.CreatedAt.Format(DATE_FORMAT),
 				*comment.User.Login)
 		}
-		csvLine := fmt.Sprintf("%s,%s,%v,%v,%s,%s",
-			*PR.Title,
+		daysSince := getDaysSinceLastAction(PR, comment) 
+		
+		csvLine := fmt.Sprintf("%s,%s,%t,%d,%v,%v,%s,%d,%s",
+			sanitizeTitle(*PR.Title),
 			*PR.HTMLURL,
-			PR.CreatedAt,
-			PR.UpdatedAt,
+			*PR.Draft,
+			daysSince,
+			PR.CreatedAt.Format(DATE_FORMAT),
+			PR.UpdatedAt.Format(DATE_FORMAT),
 			*PR.User.Login,
+			PR.Comments,
 			commentCsv)
 		output = append(output, csvLine)
 	}
@@ -100,4 +110,23 @@ func (p *GithubProxy) getLastComment(ctx context.Context, org, repo string, prNu
 		return nil
 	}
 	return comments[0]
+}
+
+func getDaysSinceLastAction(pr *github.PullRequest, comment *github.PullRequestComment ) int {
+	maxTime := pr.CreatedAt 
+	if pr.UpdatedAt.After(*maxTime) {
+		maxTime = pr.UpdatedAt 
+	}
+	if comment != nil {
+		if comment.CreatedAt.After(*maxTime) {
+			maxTime = comment.CreatedAt
+		}
+	}
+	sinceMax := time.Since(*maxTime)	
+	return int(sinceMax.Hours() / 24)
+}
+
+func sanitizeTitle(title string) string {
+	title = strings.ReplaceAll(title, "\"", "\"\"")
+	return fmt.Sprintf("\"%s\"", title)
 }

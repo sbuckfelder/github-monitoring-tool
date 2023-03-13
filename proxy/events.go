@@ -39,8 +39,8 @@ func (p *GithubProxy) GetEventsForHours(org string, repos []string, hours int) {
 		GenerateEventReport(events, repo)
 	}
 	fmt.Printf("_Based on Events from %s to %s_\n",
-		currentTime.Format(time.RFC3339),
-		adjTime.Format(time.RFC3339))
+		adjTime.Format(time.RFC3339),
+		currentTime.Format(time.RFC3339))
 }
 
 func (p *GithubProxy) GetEventsSinceRFC3339(org string, repos []string, sinceString string) {
@@ -57,8 +57,8 @@ func (p *GithubProxy) GetEventsSinceRFC3339(org string, repos []string, sinceStr
 		GenerateEventReport(events, repo)
 	}
 	fmt.Printf("_Based on Events from %s to %s_\n",
-		currentTime.Format(time.RFC3339),
-		since.Format(time.RFC3339))
+		since.Format(time.RFC3339),
+		currentTime.Format(time.RFC3339))
 }
 
 func (p *GithubProxy) GetEventsForDate(org string, repos []string, dateString string) {
@@ -94,9 +94,13 @@ func (p *GithubProxy) getEventsSince(
 		if err != nil {
 			return nil, err
 		}
-		lastEvent := newEvents[len(newEvents)-1]
-		if lastEvent.CreatedAt.Before(since) {
+		if len(newEvents) == 0 {
 			found = true
+		} else {
+			lastEvent := newEvents[len(newEvents)-1]
+			if lastEvent.CreatedAt.Before(since) {
+				found = true
+			}
 		}
 		events = append(events, newEvents...)
 		pageNumber++
